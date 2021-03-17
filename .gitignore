@@ -1,7 +1,7 @@
-node_modules
-packages/core/node_modules
-packages/types/node_modules
-packages/types/dist
-packages/orm/dist
-packages/orm/node_modules
-packages/client/node_modules
+node_modules/
+packages/core/node_modules/
+packages/types/node_modules/
+packages/types/dist/
+packages/orm/dist/
+packages/orm/node_modules/
+packages/client/node_modules/
