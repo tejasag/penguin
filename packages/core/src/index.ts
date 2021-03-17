@@ -1,6 +1,17 @@
-import { Mount } from "./mount";
-import gql from "graphql-tag";
-import { inputFieldToFieldConfig, makeExecutableSchema } from "graphql-tools";
+import 'reflect-metadata';
+
+import { Mount } from './mount';
+import gql from 'graphql-tag';
+import { makeExecutableSchema } from 'graphql-tools';
+import { IncomingMessage, ServerResponse } from 'node:http';
+import './tests';
+import { generateSnowflake } from './utils/snowflake';
+import { Controller } from './tests';
+
+type MyContext = {
+    req: IncomingMessage;
+    res: ServerResponse;
+};
 
 const typeDefs = gql`
     type Response {
@@ -12,6 +23,10 @@ const typeDefs = gql`
     type Query {
         hello(message: String!): Response!
     }
+
+    type Mutation {
+        setValues(message: String!): Response!
+    }
 `;
 
 const resolvers = {
@@ -21,12 +36,18 @@ const resolvers = {
         },
     },
     Query: {
-        hello: (_: any, input: any) => {
+        hello: (_: any, input: any, ctx: MyContext) => {
             return {
                 ok: true,
                 message: input.message,
             };
         },
+    },
+    Mutation: {
+        setValues: (_: any, input: any) => ({
+            ok: true,
+            message: input.message,
+        }),
     },
 };
 
@@ -36,11 +57,16 @@ const schema = makeExecutableSchema({
 });
 
 const app = new Mount({
-    path: "/graphql",
     graphql: {
+        path: '/graphql',
         schema,
-        context: ({ ws, http }) => ({ ws, http }),
     },
+    app: {
+        context: ({ ws, req, res, route }) => ({ ws, req, res, route }),
+        modules: [Controller],
+        prefix: 'api',
+    },
+    orm: false,
 });
 
-app.listen(9000, () => console.log("Server started on port 5000"));
+app.listen(3000, () => console.log('Server started on port 5000'));

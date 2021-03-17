@@ -1,141 +1,117 @@
-import EventEmitter from "events";
-import {
-    execute,
-    GraphQLSchema,
-    parse,
-    Source,
-    specifiedRules,
-    validate,
-} from "graphql";
-import { createServer, Server } from "http";
-import type { Server as WsServerType } from "ws";
-import { Server as WsServer } from "ws";
-import * as url from "url";
+import { GraphQLSchema, validateSchema } from 'graphql';
+import { createServer, Server } from 'http';
+import { Server as WsServer } from 'ws';
+import * as url from 'url';
+import { OrmOptions } from '@penguin/types';
+import { RequestHandler } from './request';
+import { IncomingMessage } from 'node:http';
+import { Response } from './models/response';
+import { BaseModule } from './module';
+
+interface ContextPayload {
+    ws?: WsServer;
+    http?: Server;
+    req?: IncomingMessage;
+    res?: Response;
+    route?: {
+        param?: string;
+        query?: {
+            [key: string]: string;
+        };
+    };
+}
 
 interface GraphqlOptions {
+    rootValue?: string;
     schema: GraphQLSchema;
-    context: (params: any) => void;
+    path?: string;
 }
 
 interface Options {
     graphql: GraphqlOptions;
-    path: string;
+    orm: OrmOptions | boolean;
+    app: App;
 }
 
-export class Mount extends EventEmitter {
-    private http: Server;
-    private ws: WsServerType;
+interface App {
+    context: (params: ContextPayload) => void;
+    prefix: string;
+    modules?: any[];
+}
+
+export class Mount {
+    http: Server;
+    ws: WsServer;
     private schema: GraphQLSchema;
     private path: string;
     private context: any;
+    private handler: RequestHandler;
+    private rootValue: string;
+    private orm: OrmOptions | boolean;
+    private modules: any[];
+    private prefix: string;
 
     constructor(options: Options) {
-        super();
-        this.path = options.path;
-        this.context = options.graphql.context;
+        this.path = options.graphql.path || '/graphql';
+        this.context = options.app.context;
+
+        const schemaErrors = validateSchema(options.graphql.schema);
+
+        if (schemaErrors.length > 0) {
+            throw new Error(schemaErrors.toString());
+        }
+
         this.schema = options.graphql.schema;
+
+        if (options.orm) {
+            this.orm = options.orm;
+        } else {
+            this.orm = false;
+        }
+
+        this.modules = options.app.modules!;
+        this.prefix = options.app.prefix;
+
+        if (options.graphql.rootValue) {
+            this.rootValue = options.graphql.rootValue;
+        }
     }
 
     async listen(port: number, cb: Function) {
         this.http = createServer();
         this.ws = new WsServer({ noServer: true });
 
-        this.http.on("upgrade", (request, socket, head) => {
-            const pathname = url.parse(request.url).pathname;
+        this.http.on('upgrade', (request: IncomingMessage, socket, head) => {
+            const pathname = url.parse(request.url!).pathname;
 
-            if (pathname === this.path || pathname === "/graphql") {
+            if (pathname === this.path || pathname === '/graphql') {
                 this.ws.handleUpgrade(request, socket, head, (ws) => {
                     (ws as any).upgradeReq === request;
-                    this.ws.emit("connection", ws, request);
+                    this.ws.emit('connection', ws, request);
                 });
             } else {
                 socket.destroy();
             }
         });
 
-        this.http.listen(port);
-        this.handler();
-        this.rest();
-        cb(this.ws, this.ws);
-    }
-
-    async handler() {
-        this.ws.on("connection", (websocket: any, request: any) => {
-            websocket.on("message", (payload: any, test: any) => {
-                this.graphql(JSON.parse(payload));
-            });
-
-            console.log(websocket.upgradeReq);
-
-            websocket.on("data", (payload: any) => {
-                console.log(payload);
-            });
-
-            this.on("response", (result: any, optype: string, opcode: number) =>
-                websocket.send(
-                    JSON.stringify({ optype, opcode, data: { result } })
-                )
-            );
-        });
-    }
-
-    private async graphql(payload: any) {
-        const data: any = await this.getParams(payload);
-        let documentAST;
-        try {
-            documentAST = parse(new Source(data.body, "GraphQL request"));
-        } catch (syntaxError: unknown) {}
-
-        const validationErrors = validate(this.schema, documentAST as any, [
-            ...specifiedRules,
-        ]);
-
-        if (validationErrors) {
+        if (this.orm) {
+            // @ts-ignore
+            const orm = await import('@penguin/orm');
+            console.log(orm);
         }
 
-        const result = await execute({
+        this.handler = new RequestHandler({
             schema: this.schema,
-            document: documentAST as any,
-            variableValues: data.variables,
-            operationName: data.operation,
-            contextValue: this.context({ ws: this.ws, http: this.http }),
+            ws: this.ws,
+            http: this.http,
+            context: this.context,
+            path: this.path,
+            rootValue: this.rootValue ? this.rootValue : '',
+            modules: this.modules,
+            prefix: this.prefix,
         });
-
-        this.emit("response", result.data, data.optype, data.opcode);
-    }
-
-    private async getParams(payload: any) {
-        const opcode = payload.opcode;
-        const operation = payload.operation;
-        const body = payload.data.body;
-        const variables = payload.data.variables;
-
-        let optype;
-        switch (opcode) {
-            case 0:
-                optype = "query";
-                break;
-            case 2:
-                optype = "mutation";
-                break;
-            case 3:
-                optype = "subscription";
-                break;
-        }
-
-        return { operation, body: body.toString(), variables, optype, opcode };
-    }
-
-    private async rest() {
-        this.http.on("request", (req, res) => {
-            if (
-                (req.url === this.path &&
-                    (req.method === "GET" || req.method === "get")) ||
-                (req.url === "/graphql" &&
-                    (req.method === "GET" || req.method === "get"))
-            ) {
-                console.log(req.headers);
-            }
-        });
+        this.http.listen(port);
+        this.handler.onReq();
+        cb(this.ws, this.ws);
     }
 }
