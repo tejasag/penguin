@@ -3,10 +3,12 @@ import { createServer, Server } from 'http';
 import { Server as WsServer } from 'ws';
 import * as url from 'url';
 import { OrmOptions } from '@penguin/types';
-import { RequestHandler } from './request';
 import { IncomingMessage } from 'node:http';
 import { Response } from './models/response';
 import { BaseModule } from './module';
+import { WebsocketRequestHandler } from './handlers/websocket';
+import { getMetadataStorage } from './metadata/getMetadata';
+import { HttpRequestHandler } from './handlers/http';
 
 interface ContextPayload {
     ws?: WsServer;
@@ -36,19 +38,24 @@ interface Options {
 interface App {
     context: (params: ContextPayload) => void;
     prefix: string;
-    modules?: any[];
+    modules: any[];
 }
 
 export class Mount {
-    http: Server;
+    server: Server;
     ws: WsServer;
     private schema: GraphQLSchema;
     private path: string;
     private context: any;
-    private handler: RequestHandler;
     private rootValue: string;
     private orm: OrmOptions | boolean;
-    private modules: any[];
+    private modules: {
+        [key: string]: {
+            name: string;
+            prefix: string;
+            module: BaseModule;
+        };
+    } = {};
     private prefix: string;
 
     constructor(options: Options) {
@@ -69,7 +76,25 @@ export class Mount {
             this.orm = false;
         }
 
-        this.modules = options.app.modules!;
+        for (const rawModule of options.app.modules) {
+            const module: BaseModule = new rawModule();
+            const metadata = getMetadataStorage().getSingleModuleMetadata(
+                rawModule.name
+            );
+
+            if (!metadata) {
+                throw new Error(
+                    `Module ${rawModule.name} is invalid, missing @Module() decorator`
+                );
+            }
+
+            this.modules[metadata?.name!] = {
+                module,
+                prefix: metadata?.prefix!,
+                name: metadata?.name!,
+            };
+        }
+
         this.prefix = options.app.prefix;
 
         if (options.graphql.rootValue) {
@@ -78,10 +103,10 @@ export class Mount {
     }
 
     async listen(port: number, cb: Function) {
-        this.http = createServer();
+        this.server = createServer();
         this.ws = new WsServer({ noServer: true });
 
-        this.http.on('upgrade', (request: IncomingMessage, socket, head) => {
+        this.server.on('upgrade', (request: IncomingMessage, socket, head) => {
             const pathname = url.parse(request.url!).pathname;
 
             if (pathname === this.path || pathname === '/graphql') {
@@ -94,24 +119,36 @@ export class Mount {
             }
         });
 
-        if (this.orm) {
-            // @ts-ignore
-            const orm = await import('@penguin/orm');
-            console.log(orm);
-        }
-
-        this.handler = new RequestHandler({
-            schema: this.schema,
-            ws: this.ws,
-            http: this.http,
-            context: this.context,
-            path: this.path,
-            rootValue: this.rootValue ? this.rootValue : '',
-            modules: this.modules,
-            prefix: this.prefix,
-        });
-        this.http.listen(port);
-        this.handler.onReq();
+        this.server.listen(port);
+        this.init();
         cb(this.ws, this.ws);
+    }
+
+    private async init() {
+        const rawModules = Object.entries(this.modules);
+
+        const modules = rawModules.map((m) => {
+            return {
+                prefix: m[1].prefix,
+                module: m[1].module,
+                name: m[1].name,
+            };
+        });
+
+        new WebsocketRequestHandler({
+            schema: this.schema,
+            server: this.ws,
+            context: this.context,
+            modules,
+        }).init();
+
+        new HttpRequestHandler({
+            schema: this.schema,
+            server: this.server,
+            prefix: this.prefix,
+            modules,
+            path: this.path,
+            context: this.context,
+        }).init();
     }
 }
