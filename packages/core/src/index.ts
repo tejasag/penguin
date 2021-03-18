@@ -6,7 +6,7 @@ import { makeExecutableSchema } from 'graphql-tools';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import './tests';
 import { generateSnowflake } from './utils/snowflake';
-import { Controller } from './tests';
+import { Controller, Controller2 } from './tests';
 
 type MyContext = {
     req: IncomingMessage;
@@ -63,7 +63,7 @@ const app = new Mount({
     },
     app: {
         context: ({ ws, req, res, route }) => ({ ws, req, res, route }),
-        modules: [Controller],
+        modules: [Controller, Controller2],
         prefix: 'api',
     },
     orm: false,

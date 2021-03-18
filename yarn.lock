@@ -1694,6 +1694,13 @@
   dependencies:
     graphql "*"
 
+"@types/inflation@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@types/inflation/-/inflation-2.0.0.tgz#8ed18bc3fed030a02ad6fe370d9442bbf4b5c2a1"
+  integrity sha512-hiR10/dvs3Ex+otUwIHrXXVRvbNh3WJgwLV9OIEUDTmbbYM6N+6PD3tqJcutBaghh+zk/Wf9vro11SxhZIOjtg==
+  dependencies:
+    "@types/node" "*"
+
 "@types/minimatch@*":
   version "3.0.3"
   resolved "https://registry.yarnpkg.com/@types/minimatch/-/minimatch-3.0.3.tgz"
@@ -2391,7 +2398,7 @@ chalk@^3.0.0:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
 
-chalk@^4.0.0:
+chalk@^4.0.0, chalk@^4.1.0:
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/chalk/-/chalk-4.1.0.tgz#4e14870a618d9e2edd97dd8345fd9d9dc315646a"
   integrity sha512-qwx12AxXe2Q5xQ43Ac//I6v5aXTipYrSESdOgzrN+9XjgEpyjpKuvSGaN4qE93f7TQTlerQQ8S+EQ0EyDoVL1A==
@@ -5921,7 +5928,7 @@ quick-lru@^4.0.1:
   resolved "https://registry.yarnpkg.com/quick-lru/-/quick-lru-4.0.1.tgz"
   integrity sha512-ARhCpm70fzdcvNQfPoy49IaanKkTlRWF2JMzqhcJbhSFRZv7nPTvZJdcY7301IPmvW+/p0RgIWnQDLJxifsQ7g==
 
-raw-body@^2.3.3:
+raw-body@^2.3.3, raw-body@^2.4.1:
   version "2.4.1"
   resolved "https://registry.yarnpkg.com/raw-body/-/raw-body-2.4.1.tgz#30ac82f98bb5ae8c152e67149dac8d55153b168c"
   integrity sha512-9WmIKF6mkvA0SLmA2Knm9+qj89e+j1zqgyn8aXGd7+nAduPoqgI9lO57SAZNn/Byzo5P7JhXTyg9PzaJbH73bA==
@@ -6099,6 +6106,11 @@ redent@^3.0.0:
   dependencies:
     indent-string "^4.0.0"
     strip-indent "^3.0.0"
+
+reflect-metadata@^0.1.13:
+  version "0.1.13"
+  resolved "https://registry.yarnpkg.com/reflect-metadata/-/reflect-metadata-0.1.13.tgz#67ae3ca57c972a2aa1642b10fe363fe32d49dc08"
+  integrity sha512-Ts1Y/anZELhSsjMcU605fU9RE4Oi3p5ORujwbIKXfWa+0Zxs510Qrmrce5/Jowq3cHSZSJqBjypxmHarc+vEWg==
 
 regenerator-runtime@^0.13.4:
   version "0.13.7"

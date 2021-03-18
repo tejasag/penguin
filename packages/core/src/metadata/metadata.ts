@@ -15,6 +15,10 @@ export class Metadata {
         return this.routeMetadata;
     }
 
+    getGroupRouteMetadata(module: string) {
+        return this.routeMetadata.filter((r) => r.parent === module);
+    }
+
     collectModuleMetadata(options: ModuleOptions) {
         this.moduleMetadata.push(options);
     }
@@ -26,14 +30,15 @@ export class Metadata {
         return this.moduleMetadata;
     }
 
+    getSingleModuleMetadata(module: string) {
+        return this.moduleMetadata.find((m) => m.name === module);
+    }
+
     collectEventMetadata(options: EventMetadataOptions) {
         this.eventMetadata.push(options);
     }
 
-    getEventMetadata(identifyer?: string) {
-        if (identifyer) {
-            return this.eventMetadata.find((v) => v.name === identifyer);
-        }
-        return this.eventMetadata;
+    getGroupEventMetadata(module: string) {
+        return this.eventMetadata.filter((e) => e.parent === module);
     }
 }

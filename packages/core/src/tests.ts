@@ -28,4 +28,20 @@ export class Controller extends BaseModule {
     async coco(ctx: any) {
         ctx.websocket.send(JSON.stringify({ uwu: 'uwu' }));
     }
+
+    @Event({ name: 'owo' })
+    async banana(ctx: any) {
+        ctx.websocket.send(JSON.stringify({ uwu: 'uwu' }));
+    }
+}
+
+@Module({
+    prefix: 'test2',
+})
+export class Controller2 extends BaseModule {
+    @Route({ method: 'post' })
+    async hello(ctx: any) {
+        const body = ctx.req.body;
+        ctx.res.json(body);
+    }
 }
